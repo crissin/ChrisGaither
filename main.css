@@ -6,44 +6,43 @@ body {
   box-sizing: border-box;
 }
 
-.form-group {
+.query-container {
+  margin: 20px;
   width: 200px;
 }
 
 ul {
+  margin: 0;
   list-style-type: none;
   padding: 0;
-  margin: 0;
 }
 
 .results {
   border: 1px solid #ccc;
   border-top: 0;
-  width: 100%;
-  padding: 5px 0;
-  max-height: 200px;
+  margin: 0;
   overflow-y: scroll;
+  padding: 0;
+  width: 100%;
 }
 
 .result {
-  padding: 5px;
   cursor: pointer;
+  padding: 5px;
 }
-.result:hover {
+.result:hover,
+.result:focus,
+.result:active {
   background-color: #eee;
 }
 
-form {
+#container {
   display: flex;
 }
 
-.form-group + .form-group {
-  margin-left: 50px;
-}
-
 input {
-  display: block;
-  width: 100%;
-  padding: 5px;
   border: 1px solid #ccc;
+  display: block;
+  padding: 5px;
+  width: 100%;
 }

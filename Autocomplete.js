@@ -1,59 +1,93 @@
-export default class Autocomplete {
-  constructor(rootEl, options = {}) {
-    this.rootEl = rootEl;
-    this.options = {
-      numOfResults: 10,
-      data: [],
-      ...options
-    };
+function Autocomplete(rootEl, options = {}) {
+  this.rootEl = rootEl;
 
-    this.init();
-  }
+  this.options = {
+    queryCount: 10,
+    data: [],
+    ...options
+  };
 
-  /**
-   * Given an array and a query, return a filtered array based on the query.
-   */
-  getResults(query, data) {
+  // a React-esque state storage
+  this.state = {
+    selection: {
+      index: null,
+      text: null
+    }
+  };
+
+  // a React-esque ref storage
+  this.ref = {
+    inputEl: null,
+    listUlEl: null
+  };
+
+  // store key
+  const KEYCODE = {
+    UP: 38,
+    DOWN: 40,
+    ENTER: 13
+  };
+
+  this.getResults = (query, data) => {
     if (!query) return [];
 
     // Filter for matching strings
     return data.filter(item => {
       return item.text.toLowerCase().includes(query.toLowerCase());
     });
-  }
+  };
 
-  onQueryChange(query) {
-    // Get data for the dropdown
-    let results = this.getResults(query, this.options.data);
-    results = results.slice(0, this.options.numOfResults);
+  this.onQueryChange = query => {
+    new Promise(resolve => {
+      const { getData } = this.options;
+      if (getData && typeof getData === "function") {
+        getData(query, updatedData => {
+          this.options.data = updatedData;
+          resolve(updatedData);
+        });
+      } else {
+        resolve();
+      }
+    })
+      .then(updatedData => {
+        // store data into results
+        let results = this.getResults(query, updatedData || this.options.data);
+        results = results.slice(0, this.options.queryCount);
 
-    this.updateDropdown(results);
-  }
+        this.updateDropdown(results);
+      })
+      .catch(error => {
+        console.error("an erorr occurred", error);
+      });
+  };
 
-  updateDropdown(results) {
-    this.listEl.innerHTML = "";
-    this.listEl.appendChild(this.createResultsEl(results));
-  }
+  this.updateDropdown = results => {
+    this.ref.listUlEl.innerHTML = "";
+    this.ref.listUlEl.appendChild(this.createResultsEl(results));
+  };
 
-  createResultsEl(results) {
+  this.createResultsEl = results => {
     const fragment = document.createDocumentFragment();
     results.forEach(result => {
       const el = document.createElement("li");
       el.classList.add("result");
+      el.setAttribute("tabindex", "-1");
       el.textContent = result.text;
 
-      // Pass the value to the onSelect callback
+      // Value passed to onSelect
       el.addEventListener("click", () => {
         const { onSelect } = this.options;
         if (typeof onSelect === "function") onSelect(result.value);
+        // set input value on click
+        this.ref.inputEl.value = result.value;
       });
 
       fragment.appendChild(el);
     });
     return fragment;
-  }
+  };
 
-  createQueryInputEl() {
+  this.createQueryInputEl = () => {
     const inputEl = document.createElement("input");
     inputEl.setAttribute("type", "search");
     inputEl.setAttribute("name", "query");
@@ -64,16 +98,65 @@ export default class Autocomplete {
     );
 
     return inputEl;
-  }
+  };
 
-  init() {
-    // Build query input
-    this.inputEl = this.createQueryInputEl();
-    this.rootEl.appendChild(this.inputEl);
+  this.handleKeyDown = event => {
+    if (
+      event &&
+      event.target &&
+      (event.keyCode === KEYCODE.DOWN ||
+        event.keyCode === KEYCODE.UP ||
+        event.keyCode === KEYCODE.ENTER)
+    ) {
+      event.preventDefault();
+      const results = event.target
+        .closest(".query-container")
+        .querySelectorAll(".result");
 
-    // Build results dropdown
-    this.listEl = document.createElement("ul");
-    this.listEl.classList.add("results");
-    this.rootEl.appendChild(this.listEl);
-  }
+      if (results.length) {
+        const currentlySelectedIndex =
+          this.state.selection.index &&
+          [...results].indexOf(results[this.state.selection.index]);
+
+        if (event.keyCode === KEYCODE.DOWN) {
+          const isLastIndex = currentlySelectedIndex === results.length - 1;
+          if (currentlySelectedIndex >= 0 && !isLastIndex) {
+            this.setSelection(currentlySelectedIndex + 1);
+          } else if (!currentlySelectedIndex || !isLastIndex) {
+            this.setSelection(0);
+          }
+        } else if (event.keyCode === KEYCODE.UP && currentlySelectedIndex > 0) {
+          this.setSelection(currentlySelectedIndex - 1);
+        }
+        results[this.state.selection.index].focus();
+
+        // set input value on mousedown
+        this.ref.inputEl.value = results[this.state.selection.index].innerHTML;
+
+        if (event.keyCode === KEYCODE.ENTER) {
+          results[this.state.selection.index].click();
+        }
+      }
+    }
+  };
+
+  this.setSelection = value => {
+    return (this.state.selection.index = value);
+  };
+
+  this.init = () => {
+    // input
+    this.ref.inputEl = this.createQueryInputEl();
+    this.rootEl.appendChild(this.ref.inputEl);
+    // results
+    this.ref.listUlEl = document.createElement("ul");
+    this.ref.listUlEl.classList.add("results");
+    this.rootEl.appendChild(this.ref.listUlEl);
+    // attach event listener to root element
+    this.rootEl.addEventListener("keydown", this.handleKeyDown);
+  };
+
+  this.init();
 }
+
+export default Autocomplete;

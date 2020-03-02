@@ -1,9 +1,9 @@
 module.exports = {
   extends: "airbnb-base",
   env: {
-    browser: true,
+    browser: true
   },
   rules: {
-    'class-methods-use-this': 'off',
-  },
+    "class-methods-use-this": "off"
+  }
 };
